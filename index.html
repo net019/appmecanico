@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MecánicoPro CRM - Control Total de Taller</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#16a34a',
+              600: '#15803d',
+              700: '#166534',
+              900: '#14532d',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Inter Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    [x-cloak] { display: none !important; }
+  </style>
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Dexie.js (IndexedDB) -->
+  <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
+
+  <!-- Howler.js (Sonidos) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+
+  <!-- SweetAlert2 (Notificaciones y Alertas) -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <!-- Chart.js (Dashboard Financiero) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Alpine.js (Core & State Engine) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <!-- CRM Modules -->
+  <script src="js/db.js"></script>
+  <script src="js/helpers.js"></script>
+  <script src="js/onboarding.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/clientes_vehiculos.js"></script>
+  <script src="js/ordenes.js"></script>
+  <script src="js/whatsapp.js"></script>
+  <script src="js/configuracion.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col" x-data="crmApp()" x-init="initApp()" x-cloak>
+
+  <!-- 1. VISTA DE ONBOARDING (Solo se muestra por primera vez) -->
+  <div x-show="mostrarOnboarding" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8 relative overflow-hidden">
+      <!-- Decoración de fondo de taller -->
+      <div class="absolute -right-16 -top-16 w-48 h-48 bg-emerald-50 rounded-full flex items-center justify-center opacity-40">
+        <i data-lucide="wrench" class="w-24 h-24 text-emerald-500"></i>
+      </div>
+
+      <!-- Paso 1: Configurar Datos -->
+      <div x-show="onboarding.paso === 1">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="p-3 bg-emerald-500 text-white rounded-xl">
+            <i data-lucide="gauge" class="w-8 h-8"></i>
+          </div>
+          <div>
+            <h1 class="text-3xl font-extrabold text-slate-800">MecánicoPro CRM</h1>
+            <p class="text-gray-500 text-sm">Configuración e instalación inicial del taller mecánico</p>
+          </div>
+        </div>
+
+        <p class="text-gray-600 mb-6 leading-relaxed">
+          Bienvenido al CRM de Taller Mecánico Profesional. Configure los parámetros de su negocio para iniciar.
+        </p>
+
+        <form @submit.prevent="onboarding.iniciarCalibracion(() => finalizarOnboardingCompleto())" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nombre del Taller *</label>
+              <input type="text" x-model="onboarding.nuevoTaller.nombre" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Ej. Taller Mecánico Speed">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Propietario / Mecánico Jefe *</label>
+              <input type="text" x-model="onboarding.nuevoTaller.propietario" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Ej. Carlos Martínez">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Teléfono Móvil *</label>
+              <input type="text" x-model="onboarding.nuevoTaller.telefono" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Ej. +56912345678">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-gray-700 uppercase mb-1">WhatsApp de Envío *</label>
+              <input type="text" x-model="onboarding.nuevoTaller.whatsapp" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Ej. +56912345678">
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Dirección del Taller</label>
+              <input type="text" x-model="onboarding.nuevoTaller.direccion" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Ej. Av. Einstein 1234, Santiago">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-gray-700 uppercase mb-1">País de habla Hispana</label>
+              <select x-model="onboarding.nuevoTaller.pais" @change="actualizarMonedaDefecto()" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                <option value="Chile">Chile</option>
+                <option value="Argentina">Argentina</option>
+                <option value="México">México</option>
+                <option value="Colombia">Colombia</option>
+                <option value="España">España</option>
+                <option value="Perú">Perú</option>
+                <option value="Uruguay">Uruguay</option>
+                <option value="Otro">Otro (Personalizado)</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Moneda</label>
+                <input type="text" x-model="onboarding.nuevoTaller.moneda" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 text-center font-bold" placeholder="$">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Formato</label>
+                <input type="text" x-model="onboarding.nuevoTaller.formatoMoneda" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 text-center text-xs" placeholder="es-CL">
+              </div>
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-xs font-bold text-gray-700 uppercase mb-1">URL del Logo (Opcional)</label>
+              <input type="url" x-model="onboarding.nuevoTaller.logoUrl" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="https://example.com/logo.png">
+            </div>
+          </div>
+
+          <div class="pt-4">
+            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-lg">
+              <span>Guardar e Iniciar Calibración</span>
+              <i data-lucide="arrow-right" class="w-5 h-5"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Paso 2: Animación de Calibración -->
+      <div x-show="onboarding.paso === 2" class="text-center py-12">
+        <div class="relative w-40 h-40 mx-auto mb-8">
+          <!-- Spinner de engranaje mecánico girando -->
+          <div class="absolute inset-0 animate-spin text-emerald-500 duration-1000">
+            <svg class="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+          </div>
+          <!-- Porcentaje en el centro -->
+          <div class="absolute inset-0 flex items-center justify-center">
+            <span class="text-2xl font-black text-slate-800" x-text="`${onboarding.progresoCalibracion}%`">0%</span>
+          </div>
+        </div>
+
+        <h3 class="text-2xl font-bold text-slate-800 mb-2">Calibrando Sensores del CRM</h3>
+        <p class="text-emerald-600 font-semibold mb-6 animate-pulse" x-text="onboarding.mensajeCalibracion">Iniciando...</p>
+
+        <!-- Barra de progreso -->
+        <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+          <div class="bg-emerald-500 h-full transition-all duration-300" :style="`width: ${onboarding.progresoCalibracion}%`"></div>
+        </div>
+      </div>
+
+      <!-- Paso 3: Éxito Final -->
+      <div x-show="onboarding.paso === 3" class="text-center py-10">
+        <div class="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+          <i data-lucide="check-circle" class="w-12 h-12"></i>
+        </div>
+        <h3 class="text-3xl font-black text-slate-800 mb-2">¡Taller Calibrado!</h3>
+        <p class="text-gray-600 mb-8 max-w-md mx-auto">
+          La base de datos IndexedDB local se ha inicializado correctamente. Hemos cargado algunos datos de prueba para que explores de inmediato.
+        </p>
+        <button @click="entrarAlSistema()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-xl transition duration-200 shadow-lg">
+          Comenzar a Trabajar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. DISEÑO PRINCIPAL (SPA SHELL) -->
+  <div x-show="!mostrarOnboarding" class="flex flex-col md:flex-row flex-1">
+
+    <!-- BARRA LATERAL DE NAVEGACIÓN -->
+    <aside class="bg-slate-900 text-white w-full md:w-64 flex flex-col shrink-0 border-r border-slate-800">
+      <!-- Encabezado del taller -->
+      <div class="p-6 border-b border-slate-800 flex items-center gap-3">
+        <img :src="config.datosTaller.logoUrl || 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?auto=format&fit=crop&q=80&w=200'" class="w-10 h-10 rounded-lg object-cover bg-slate-800">
+        <div>
+          <h2 class="font-extrabold text-sm tracking-wide uppercase truncate max-w-[140px]" x-text="config.datosTaller.nombre">Taller</h2>
+          <p class="text-xs text-emerald-400 font-semibold truncate" x-text="config.datosTaller.propietario">Mecánico Jefe</p>
+        </div>
+      </div>
+
+      <!-- Menú de navegación -->
+      <nav class="flex-1 p-4 space-y-1">
+        <button @click="navegar('dashboard')" :class="vistaActiva === 'dashboard' ? 'bg-emerald-600 text-white' : 'hover:bg-slate-800 text-slate-300'" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition duration-150">
+          <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+          <span>Dashboard Clinico</span>
+        </button>
+        <button @click="navegar('clientes')" :class="vistaActiva === 'clientes' ? 'bg-emerald-600 text-white' : 'hover:bg-slate-800 text-slate-300'" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition duration-150">
+          <i data-lucide="users" class="w-5 h-5"></i>
+          <span>Clientes & Autos</span>
+        </button>
+        <button @click="navegar('ordenes')" :class="vistaActiva === 'ordenes' ? 'bg-emerald-600 text-white' : 'hover:bg-slate-800 text-slate-300'" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition duration-150">
+          <i data-lucide="clipboard-list" class="w-5 h-5"></i>
+          <span>Órdenes de Trabajo</span>
+        </button>
+        <button @click="navegar('whatsapp')" :class="vistaActiva === 'whatsapp' ? 'bg-emerald-600 text-white' : 'hover:bg-slate-800 text-slate-300'" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition duration-150">
+          <i data-lucide="message-square" class="w-5 h-5"></i>
+          <span>Plantillas WhatsApp</span>
+        </button>
+        <button @click="navegar('configuracion')" :class="vistaActiva === 'configuracion' ? 'bg-emerald-600 text-white' : 'hover:bg-slate-800 text-slate-300'" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition duration-150">
+          <i data-lucide="settings" class="w-5 h-5"></i>
+          <span>Configuración</span>
+        </button>
+      </nav>
+
+      <!-- Pie de navegación -->
+      <div class="p-4 border-t border-slate-800 text-center text-xs text-slate-500 font-semibold">
+        <span>MecánicoPro CRM v1.0.0</span>
+      </div>
+    </aside>
+
+    <!-- ÁREA DE CONTENIDO CENTRAL -->
+    <main class="flex-1 flex flex-col min-w-0">
+
+      <!-- NAV SUPERIOR DE CONTEXTO -->
+      <header class="bg-white shadow-sm h-16 flex items-center justify-between px-6 border-b border-gray-100 shrink-0">
+        <h1 class="text-xl font-bold text-slate-800 capitalize" x-text="vistaActiva.replace('_', ' ')">Dashboard</h1>
+        <div class="flex items-center gap-4">
+          <span class="text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full font-bold border border-emerald-100 flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping"></span>
+            Conexión Local Estable (IndexedDB)
+          </span>
+        </div>
+      </header>
+
+      <!-- VISTAS DE LA SPA -->
+      <div class="flex-1 p-6 overflow-y-auto">
+
+        <!-- ==================== VISTA: DASHBOARD ==================== -->
+        <div x-show="vistaActiva === 'dashboard'" class="space-y-6">
+          <!-- Grid de KPIs -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Card KPI 1 -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition">
+              <div class="p-3 bg-blue-50 text-blue-600 rounded-lg">
+                <i data-lucide="car" class="w-8 h-8"></i>
+              </div>
+              <div>
+                <span class="text-xs text-gray-400 font-semibold uppercase block">Vehículos en Taller Hoy</span>
+                <span class="text-3xl font-black text-slate-800" x-text="dashboard.kpis.vehiculosHoy">0</span>
+              </div>
+            </div>
+            <!-- Card KPI 2 -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition">
+              <div class="p-3 bg-amber-50 text-amber-600 rounded-lg">
+                <i data-lucide="wrench" class="w-8 h-8"></i>
+              </div>
+              <div>
+                <span class="text-xs text-gray-400 font-semibold uppercase block">Órdenes Activas</span>
+                <span class="text-3xl font-black text-slate-800" x-text="dashboard.kpis.ordenesActivas">0</span>
+              </div>
+            </div>
+            <!-- Card KPI 3 -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition">
+              <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+                <i data-lucide="dollar-sign" class="w-8 h-8"></i>
+              </div>
+              <div>
+                <span class="text-xs text-gray-400 font-semibold uppercase block">Ingresos del Mes</span>
+                <span class="text-3xl font-black text-slate-800" x-text="formatearMoneda(dashboard.kpis.ingresosMes, config.datosTaller.moneda, config.datosTaller.formatoMoneda)">$0</span>
+              </div>
+            </div>
+            <!-- Card KPI 4 -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition">
+              <div class="p-3 bg-rose-50 text-rose-600 rounded-lg">
+                <i data-lucide="file-text" class="w-8 h-8"></i>
+              </div>
+              <div>
+                <span class="text-xs text-gray-400 font-semibold uppercase block">Presupuestos Pendientes</span>
+                <span class="text-3xl font-black text-slate-800" x-text="dashboard.kpis.presupuestosPendientes">0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gráfico -->
+          <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 class="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
+              <i data-lucide="trending-up" class="text-emerald-600"></i>
+              Rendimiento Técnico y Financiero
+            </h3>
+            <div class="relative h-96">
+              <canvas id="dashboardChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== VISTA: CLIENTES & VEHÍCULOS ==================== -->
+        <div x-show="vistaActiva === 'clientes'" class="space-y-6">
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <!-- Barra de búsqueda -->
+            <div class="relative w-full sm:max-w-md">
+              <input type="text" x-model="clientes.busquedaClientes" placeholder="Buscar cliente por nombre, teléfono o documento..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              <i data-lucide="search" class="absolute left-3 top-2.5 w-5 h-5 text-gray-400"></i>
+            </div>
+            <!-- Botones de Acción -->
+            <div class="flex gap-2 w-full sm:w-auto">
+              <button @click="abrirModalCliente()" class="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2">
+                <i data-lucide="user-plus" class="w-5 h-5"></i>
+                <span>Nuevo Cliente</span>
+              </button>
+              <button @click="abrirModalVehiculo()" class="flex-1 sm:flex-initial bg-slate-800 hover:bg-slate-700 text-white font-semibold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2">
+                <i data-lucide="car" class="w-5 h-5"></i>
+                <span>Registrar Auto</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Listado de Clientes con sus Vehículos vinculados -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <template x-for="c in clientesFiltrados()" :key="c.id">
+              <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col justify-between hover:shadow-md transition">
+                <div>
+                  <div class="flex items-start justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center font-bold text-lg" x-text="c.nombre[0].toUpperCase()">
+                        J
+                      </div>
+                      <div>
+                        <h4 class="font-extrabold text-slate-800 text-lg" x-text="c.nombre">Juan Pérez</h4>
+                        <span class="text-xs text-gray-400 font-semibold" x-text="'ID: ' + c.documento">Doc: 1234</span>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <button @click="abrirModalCliente(c)" class="p-2 hover:bg-gray-100 rounded-lg text-amber-500 transition" title="Editar Cliente">
+                        <i data-lucide="edit-3" class="w-5 h-5"></i>
+                      </button>
+                      <button @click="eliminarCliente(c.id)" class="p-2 hover:bg-gray-100 rounded-lg text-rose-500 transition" title="Eliminar Cliente">
+                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Datos de contacto -->
+                  <div class="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-4 border-b border-gray-100 pb-4">
+                    <div class="flex items-center gap-2">
+                      <i data-lucide="phone" class="w-4 h-4 text-emerald-600"></i>
+                      <span class="truncate" x-text="c.telefono">55512345</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <i data-lucide="mail" class="w-4 h-4 text-emerald-600"></i>
+                      <span class="truncate" x-text="c.email || 'No posee'">correo@example.com</span>
+                    </div>
+                  </div>
+
+                  <!-- Parque Vehicular Relacionado -->
+                  <div>
+                    <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Vehículos Registrados</h5>
+                    <div class="space-y-2">
+                      <template x-for="v in c.vehiculos" :key="v.id">
+                        <div class="bg-gray-50 border border-gray-100 rounded-lg p-3 flex items-center justify-between">
+                          <div class="flex items-center gap-2.5">
+                            <i data-lucide="car" class="w-5 h-5 text-slate-500"></i>
+                            <div>
+                              <p class="font-bold text-sm text-slate-700" x-text="`${v.marca} ${v.modelo} (${v.anio})`">Toyota Corolla</p>
+                              <div class="flex gap-2 text-xs text-gray-500 font-semibold">
+                                <span class="bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded uppercase" x-text="v.placa">AB-123-CD</span>
+                                <span x-text="`${v.kilometraje.toLocaleString()} km`">45k km</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="flex gap-1">
+                            <button @click="abrirModalVehiculo(v)" class="p-1.5 hover:bg-gray-200 rounded text-amber-500 transition" title="Editar Auto">
+                              <i data-lucide="edit-2" class="w-4 h-4"></i>
+                            </button>
+                            <button @click="eliminarVehiculo(v.id)" class="p-1.5 hover:bg-gray-200 rounded text-rose-500 transition" title="Eliminar Auto">
+                              <i data-lucide="trash" class="w-4 h-4"></i>
+                            </button>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="c.vehiculos.length === 0">
+                        <p class="text-xs text-gray-400 italic">No registra vehículos vinculados.</p>
+                      </template>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- ==================== VISTA: ÓRDENES DE TRABAJO ==================== -->
+        <div x-show="vistaActiva === 'ordenes'" class="space-y-6">
+          <div class="flex flex-col lg:flex-row items-center justify-between gap-4">
+            <!-- Búsqueda y Filtros -->
+            <div class="flex flex-col sm:flex-row gap-3 w-full lg:max-w-2xl">
+              <div class="relative flex-1">
+                <input type="text" x-model="ordenes.busquedaOrden" placeholder="Buscar OT, cliente, patente, modelo..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                <i data-lucide="search" class="absolute left-3 top-2.5 w-5 h-5 text-gray-400"></i>
+              </div>
+              <select x-model="ordenes.filtroEstado" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+                <option value="Todas">Todos los estados</option>
+                <option value="En Espera">En Espera</option>
+                <option value="En Diagnóstico">En Diagnóstico</option>
+                <option value="En Reparación">En Reparación</option>
+                <option value="Listo para Entregar">Listo para Entregar</option>
+                <option value="Entregado/Finalizado">Entregado/Finalizado</option>
+              </select>
+            </div>
+            <!-- Nueva Orden -->
+            <button @click="abrirModalOrden()" class="w-full lg:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2">
+              <i data-lucide="file-plus" class="w-5 h-5"></i>
+              <span>Nueva Orden de Trabajo</span>
+            </button>
+          </div>
+
+          <!-- Listado de Órdenes de Trabajo -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-900 text-white text-xs font-bold uppercase tracking-wider">
+                    <th class="p-4">OT #</th>
+                    <th class="p-4">Cliente / Vehículo</th>
+                    <th class="p-4">Ingreso</th>
+                    <th class="p-4">Estado</th>
+                    <th class="p-4 text-right">Mano de Obra + Insumos</th>
+                    <th class="p-4 text-center">Acciones / WhatsApp</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 text-sm">
+                  <template x-for="o in ordenesFiltradas()" :key="o.id">
+                    <tr class="hover:bg-slate-50 transition">
+                      <td class="p-4">
+                        <span class="font-extrabold text-slate-800 block" x-text="o.numeroOrden">OT-1001</span>
+                        <span class="text-xs text-gray-400 font-semibold" x-text="o.vehiculo ? o.vehiculo.placa : 'S/P'">AB123CD</span>
+                      </td>
+                      <td class="p-4">
+                        <span class="font-bold text-slate-700 block" x-text="o.cliente ? o.cliente.nombre : 'S/I'">Juan Pérez</span>
+                        <span class="text-xs text-gray-500" x-text="o.vehiculo ? `${o.vehiculo.marca} ${o.vehiculo.modelo}` : 'S/I'">Toyota Corolla</span>
+                      </td>
+                      <td class="p-4">
+                        <span class="text-gray-600" x-text="o.fechaIngreso">2023-10-10</span>
+                        <template x-if="o.fechaEntrega">
+                          <span class="text-xs text-gray-400 block" x-text="'Entr: ' + o.fechaEntrega"></span>
+                        </template>
+                      </td>
+                      <td class="p-4">
+                        <span :class="{
+                          'bg-gray-100 text-gray-800': o.estado === 'En Espera',
+                          'bg-blue-100 text-blue-800': o.estado === 'En Diagnóstico',
+                          'bg-amber-100 text-amber-800': o.estado === 'En Reparación',
+                          'bg-emerald-100 text-emerald-800': o.estado === 'Listo para Entregar',
+                          'bg-indigo-100 text-indigo-800': o.estado === 'Entregado/Finalizado',
+                        }" class="px-2.5 py-1 rounded-full text-xs font-bold" x-text="o.estado">En Espera</span>
+                      </td>
+                      <td class="p-4 text-right font-bold text-slate-800" x-text="formatearMoneda(o.total || 0, config.datosTaller.moneda, config.datosTaller.formatoMoneda)">
+                        $0
+                      </td>
+                      <td class="p-4">
+                        <div class="flex items-center justify-center gap-1.5">
+                          <!-- Editar Orden -->
+                          <button @click="abrirModalOrden(o)" class="p-2 hover:bg-gray-100 rounded-lg text-amber-500 transition" title="Editar OT">
+                            <i data-lucide="edit" class="w-5 h-5"></i>
+                          </button>
+                          <!-- Generar Mensajes WhatsApp -->
+                          <button @click="abrirMensajeriaOrden(o)" class="p-2 hover:bg-gray-100 rounded-lg text-emerald-600 transition" title="Enviar WhatsApp">
+                            <i data-lucide="message-square" class="w-5 h-5"></i>
+                          </button>
+                          <!-- Eliminar Orden -->
+                          <button @click="eliminarOrden(o.id)" class="p-2 hover:bg-gray-100 rounded-lg text-rose-500 transition" title="Eliminar OT">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                  <template x-if="ordenesFiltradas().length === 0">
+                    <tr>
+                      <td colspan="6" class="p-8 text-center text-gray-400 italic">
+                        No se encontraron órdenes de trabajo registradas.
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== VISTA: PLANTILLAS WHATSAPP ==================== -->
+        <div x-show="vistaActiva === 'whatsapp'" class="space-y-6">
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-sm text-gray-500 max-w-xl">
+              Crea plantillas dinámicas para enviar a tus clientes según el estado de la reparación. Las variables encerradas en llaves se sustituyen automáticamente por la información del vehículo y cotizaciones.
+            </p>
+            <button @click="abrirModalPlantilla()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2 shrink-0">
+              <i data-lucide="plus" class="w-5 h-5"></i>
+              <span>Nueva Plantilla</span>
+            </button>
+          </div>
+
+          <!-- Variables Disponibles de Ejemplo -->
+          <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex flex-wrap gap-2.5 text-xs font-semibold text-emerald-800">
+            <span class="bg-white border border-emerald-200 px-2.5 py-1 rounded-md">Variables Dinámicas:</span>
+            <span class="bg-white border border-emerald-200 px-2 py-1 rounded-md text-emerald-600 font-mono">{nombre_cliente}</span>
+            <span class="bg-white border border-emerald-200 px-2 py-1 rounded-md text-emerald-600 font-mono">{vehiculo}</span>
+            <span class="bg-white border border-emerald-200 px-2 py-1 rounded-md text-emerald-600 font-mono">{placa}</span>
+            <span class="bg-white border border-emerald-200 px-2 py-1 rounded-md text-emerald-600 font-mono">{estado_orden}</span>
+            <span class="bg-white border border-emerald-200 px-2 py-1 rounded-md text-emerald-600 font-mono">{total_pagar}</span>
+            <span class="bg-white border border-emerald-200 px-2 py-1 rounded-md text-emerald-600 font-mono">{nombre_taller}</span>
+          </div>
+
+          <!-- Grid de Plantillas -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <template x-for="p in listaPlantillas" :key="p.id">
+              <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col justify-between hover:shadow-md transition">
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <h4 class="font-extrabold text-slate-800 text-base" x-text="p.titulo">Recepción</h4>
+                    <div class="flex gap-1">
+                      <button @click="abrirModalPlantilla(p)" class="p-1 text-amber-500 hover:bg-gray-50 rounded" title="Editar">
+                        <i data-lucide="edit-3" class="w-4.5 h-4.5"></i>
+                      </button>
+                      <button @click="eliminarPlantilla(p.id)" class="p-1 text-rose-500 hover:bg-gray-50 rounded" title="Eliminar">
+                        <i data-lucide="trash-2" class="w-4.5 h-4.5"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <p class="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed bg-slate-50 border border-slate-100 rounded-lg p-3 font-mono text-xs" x-text="p.texto"></p>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- ==================== VISTA: CONFIGURACIÓN ==================== -->
+        <div x-show="vistaActiva === 'configuracion'" class="space-y-6 max-w-4xl">
+          <!-- Modificación de datos del Taller -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 class="font-extrabold text-lg text-slate-800 mb-4 flex items-center gap-2">
+              <i data-lucide="sliders" class="text-emerald-600"></i>
+              Ajustes de Identidad y Taller
+            </h3>
+            <form @submit.prevent="config.actualizarConfiguracion()" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nombre Comercial del Taller *</label>
+                <input type="text" x-model="config.datosTaller.nombre" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Dueño / Mecánico Jefe *</label>
+                <input type="text" x-model="config.datosTaller.propietario" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Teléfono Fijo o Celular *</label>
+                <input type="text" x-model="config.datosTaller.telefono" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">WhatsApp de Envío Directo *</label>
+                <input type="text" x-model="config.datosTaller.whatsapp" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Dirección Física de Sucursal</label>
+                <input type="text" x-model="config.datosTaller.direccion" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">País</label>
+                <input type="text" x-model="config.datosTaller.pais" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Moneda ($)</label>
+                  <input type="text" x-model="config.datosTaller.moneda" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 text-center font-bold">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Formato</label>
+                  <input type="text" x-model="config.datosTaller.formatoMoneda" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 text-center text-xs">
+                </div>
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">URL de Logo Imagen</label>
+                <input type="text" x-model="config.datosTaller.logoUrl" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <div class="md:col-span-2 pt-2">
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 shadow">
+                  Guardar Cambios de Configuración
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Módulo de Respaldo y Mantenimiento de BD -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
+            <div>
+              <h3 class="font-extrabold text-lg text-slate-800 mb-1 flex items-center gap-2">
+                <i data-lucide="database" class="text-emerald-600"></i>
+                Copias de Seguridad y Base de Datos Local
+              </h3>
+              <p class="text-xs text-gray-400">Respalda o restaura todos tus clientes, vehículos y órdenes en un archivo JSON en tu disco duro.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              <!-- Exportar -->
+              <div class="border border-gray-100 rounded-xl p-4 bg-slate-50 flex flex-col justify-between">
+                <div>
+                  <h4 class="font-bold text-slate-700 mb-1 flex items-center gap-1.5 text-sm">
+                    <i data-lucide="download" class="w-4 h-4 text-emerald-600"></i>
+                    Exportar Base de Datos
+                  </h4>
+                  <p class="text-xs text-gray-500 leading-relaxed">
+                    Descarga toda tu base de datos de IndexedDB local en un archivo JSON encriptable de forma segura.
+                  </p>
+                </div>
+                <button @click="exportarBackup()" class="mt-4 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold py-2.5 px-4 rounded-lg transition">
+                  Descargar Copia de Seguridad
+                </button>
+              </div>
+
+              <!-- Importar -->
+              <div class="border border-gray-100 rounded-xl p-4 bg-slate-50 flex flex-col justify-between">
+                <div>
+                  <h4 class="font-bold text-slate-700 mb-1 flex items-center gap-1.5 text-sm">
+                    <i data-lucide="upload" class="w-4 h-4 text-amber-600"></i>
+                    Restaurar Base de Datos
+                  </h4>
+                  <p class="text-xs text-gray-500 leading-relaxed">
+                    Sube un archivo de copia de seguridad (.json) para restaurar todo el CRM a un estado anterior.
+                  </p>
+                </div>
+                <div class="mt-4">
+                  <label class="w-full block bg-emerald-600 hover:bg-emerald-700 text-white text-center text-xs font-bold py-2.5 px-4 rounded-lg cursor-pointer transition">
+                    Seleccionar Archivo JSON
+                    <input type="file" accept=".json" @change="procesarImportarBackup($event)" class="hidden">
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botón de Restablecimiento Peligroso -->
+            <div class="border-t border-gray-100 pt-6">
+              <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-rose-50 rounded-xl border border-rose-100">
+                <div>
+                  <h4 class="font-bold text-rose-800 text-sm flex items-center gap-1.5">
+                    <i data-lucide="shield-alert" class="w-5 h-5 text-rose-600"></i>
+                    Zona de Peligro / Restablecimiento Completo
+                  </h4>
+                  <p class="text-xs text-rose-600 mt-1">
+                    Esto borrará la base de datos completa de IndexedDB de manera definitiva y reiniciará el CRM al onboarding.
+                  </p>
+                </div>
+                <button @click="config.restablecerSistemaCompleto()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold py-2.5 px-4 rounded-lg transition shrink-0">
+                  Restaurar de Fábrica
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ==================== MODALES COMPONENTES DE LA SPA ==================== -->
+
+  <!-- A. MODAL: CLIENTE (Creación y Edición) -->
+  <div x-show="modalClienteOpen" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4" x-transition>
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden" @click.away="modalClienteOpen = false">
+      <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+        <h3 class="font-bold text-lg flex items-center gap-2">
+          <i data-lucide="user" class="text-emerald-400"></i>
+          <span x-text="editandoClienteId ? 'Editar Cliente' : 'Nuevo Cliente'"></span>
+        </h3>
+        <button @click="modalClienteOpen = false" class="text-gray-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form @submit.prevent="guardarClienteForm()" class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nombre Completo *</label>
+          <input type="text" x-model="clientes.nuevoCliente.nombre" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Ej. Juan Pérez">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Teléfono Móvil *</label>
+          <input type="text" x-model="clientes.nuevoCliente.telefono" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Ej. +56912345678">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Correo Electrónico</label>
+          <input type="email" x-model="clientes.nuevoCliente.email" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="correo@example.com">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">RUT / Documento Nacional</label>
+          <input type="text" x-model="clientes.nuevoCliente.documento" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="12345678-K">
+        </div>
+        <div class="pt-4 flex justify-end gap-2 border-t border-gray-100">
+          <button type="button" @click="modalClienteOpen = false" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg transition text-sm">Cancelar</button>
+          <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition text-sm">Guardar Cliente</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- B. MODAL: VEHÍCULO (Creación y Edición) -->
+  <div x-show="modalVehiculoOpen" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4" x-transition>
+    <div class="bg-white rounded-xl shadow-xl max-w-lg w-full overflow-hidden" @click.away="modalVehiculoOpen = false">
+      <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+        <h3 class="font-bold text-lg flex items-center gap-2">
+          <i data-lucide="car" class="text-emerald-400"></i>
+          <span x-text="editandoVehiculoId ? 'Editar Vehículo' : 'Registrar Vehículo'"></span>
+        </h3>
+        <button @click="modalVehiculoOpen = false" class="text-gray-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form @submit.prevent="guardarVehiculoForm()" class="p-6 space-y-4">
+        <!-- Selección de Cliente Propietario -->
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Cliente Propietario *</label>
+          <select x-model="clientes.nuevoVehiculo.clienteId" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+            <option value="">-- Seleccionar Cliente --</option>
+            <template x-for="c in listaClientes" :key="c.id">
+              <option :value="c.id" x-text="c.nombre"></option>
+            </template>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Marca *</label>
+            <input type="text" x-model="clientes.nuevoVehiculo.marca" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Ej. Toyota">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Modelo *</label>
+            <input type="text" x-model="clientes.nuevoVehiculo.modelo" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Ej. Corolla">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Año</label>
+            <input type="number" x-model="clientes.nuevoVehiculo.anio" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Ej. 2020">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Placa / Patente *</label>
+            <input type="text" x-model="clientes.nuevoVehiculo.placa" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none uppercase" placeholder="AB-123-CD">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Color</label>
+            <input type="text" x-model="clientes.nuevoVehiculo.color" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Gris Plata">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kilometraje Actual</label>
+            <input type="number" x-model="clientes.nuevoVehiculo.kilometraje" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="45000">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nº Chasis / VIN</label>
+          <input type="text" x-model="clientes.nuevoVehiculo.vin" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none uppercase" placeholder="Chasis de seguridad">
+        </div>
+
+        <div class="pt-4 flex justify-end gap-2 border-t border-gray-100">
+          <button type="button" @click="modalVehiculoOpen = false" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg transition text-sm">Cancelar</button>
+          <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition text-sm">Guardar Auto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- C. MODAL: ORDEN DE TRABAJO (Creación y Edición Completa) -->
+  <div x-show="modalOrdenOpen" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 overflow-y-auto" x-transition>
+    <div class="bg-white rounded-xl shadow-xl max-w-3xl w-full my-8 overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between shrink-0">
+        <h3 class="font-bold text-lg flex items-center gap-2">
+          <i data-lucide="clipboard-list" class="text-emerald-400"></i>
+          <span x-text="editandoOrdenId ? 'Editar Orden de Trabajo' : 'Ingresar Nueva Orden'"></span>
+        </h3>
+        <button @click="modalOrdenOpen = false" class="text-gray-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form @submit.prevent="guardarOrdenForm()" class="p-6 space-y-6 overflow-y-auto flex-1 text-sm">
+
+        <!-- Bloque 1: Cliente y Auto -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Cliente *</label>
+            <select x-model="ordenes.nuevaOrden.clienteId" @change="filtrarVehiculosDeClienteSeleccionado()" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+              <option value="">-- Seleccionar --</option>
+              <template x-for="c in listaClientes" :key="c.id">
+                <option :value="c.id" x-text="c.nombre"></option>
+              </template>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Vehículo del Cliente *</label>
+            <select x-model="ordenes.nuevaOrden.vehiculoId" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+              <option value="">-- Seleccionar --</option>
+              <template x-for="v in listaVehiculosFiltrados" :key="v.id">
+                <option :value="v.id" x-text="`${v.marca} ${v.modelo} [${v.placa}]`"></option>
+              </template>
+            </select>
+          </div>
+        </div>
+
+        <!-- Bloque 2: Atributos Físicos de Ingreso -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Fecha de Ingreso</label>
+            <input type="date" x-model="ordenes.nuevaOrden.fechaIngreso" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Fecha de Retiro Estimada</label>
+            <input type="date" x-model="ordenes.nuevaOrden.fechaEntrega" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nivel Combustible *</label>
+            <select x-model="ordenes.nuevaOrden.nivelCombustible" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+              <option value="Vacío">Vacío</option>
+              <option value="1/4">1/4 Tanque</option>
+              <option value="1/2">1/2 Tanque</option>
+              <option value="3/4">3/4 Tanque</option>
+              <option value="Lleno">Lleno</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Bloque 3: Diagnóstico e Inspección Visual -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Diagnóstico Inicial de Ingreso *</label>
+            <textarea x-model="ordenes.nuevaOrden.diagnostico" rows="3" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Describa el motivo de la falla o el trabajo solicitado por el cliente..."></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Estado Visual (Rayones / Golpes)</label>
+            <textarea x-model="ordenes.nuevaOrden.estadoVisual" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Indique abolladuras, detalles de pintura, etc."></textarea>
+          </div>
+        </div>
+
+        <!-- Bloque 4: Ciclo de Vida del Trabajo -->
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1.5">Estado Operacional de la Reparación</label>
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs font-bold">
+            <button type="button" @click="ordenes.nuevaOrden.estado = 'En Espera'" :class="ordenes.nuevaOrden.estado === 'En Espera' ? 'bg-gray-200 border-gray-400 text-slate-800' : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'" class="py-2.5 px-3 rounded-lg border transition">En Espera</button>
+            <button type="button" @click="ordenes.nuevaOrden.estado = 'En Diagnóstico'" :class="ordenes.nuevaOrden.estado === 'En Diagnóstico' ? 'bg-blue-100 border-blue-400 text-blue-800' : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'" class="py-2.5 px-3 rounded-lg border transition">En Diagnóstico</button>
+            <button type="button" @click="ordenes.nuevaOrden.estado = 'En Reparación'" :class="ordenes.nuevaOrden.estado === 'En Reparación' ? 'bg-amber-100 border-amber-400 text-amber-800' : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'" class="py-2.5 px-3 rounded-lg border transition">En Reparación</button>
+            <button type="button" @click="ordenes.nuevaOrden.estado = 'Listo para Entregar'" :class="ordenes.nuevaOrden.estado === 'Listo para Entregar' ? 'bg-emerald-100 border-emerald-400 text-emerald-800' : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'" class="py-2.5 px-3 rounded-lg border transition">Listo para Retiro</button>
+            <button type="button" @click="ordenes.nuevaOrden.estado = 'Entregado/Finalizado'" :class="ordenes.nuevaOrden.estado === 'Entregado/Finalizado' ? 'bg-indigo-100 border-indigo-400 text-indigo-800' : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'" class="py-2.5 px-3 rounded-lg border transition">Finalizado</button>
+          </div>
+        </div>
+
+        <!-- Bloque 5: Desglose de Mano de Obra y Servicios -->
+        <div class="border-t border-gray-100 pt-4">
+          <h4 class="font-bold text-slate-800 mb-2 flex items-center gap-1">
+            <i data-lucide="wrench" class="w-4 h-4 text-emerald-600"></i>
+            Mano de Obra y Servicios Especiales
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end mb-3">
+            <div class="sm:col-span-2">
+              <label class="block text-xs text-gray-500 mb-0.5">Descripción de la Tarea</label>
+              <input type="text" x-model="ordenes.tempManoDeObra.descripcion" placeholder="Ej. Cambio de bujías e inyectores" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            </div>
+            <div class="flex gap-2">
+              <div class="flex-1">
+                <label class="block text-xs text-gray-500 mb-0.5">Monto ($)</label>
+                <input type="number" x-model="ordenes.tempManoDeObra.precio" placeholder="15000" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              </div>
+              <button type="button" @click="ordenes.agregarManoDeObra()" class="bg-slate-800 hover:bg-slate-700 text-white p-2.5 rounded-lg transition" title="Agregar Servicio">
+                <i data-lucide="plus" class="w-5 h-5"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabla de Servicios agregados -->
+          <div class="space-y-1.5 max-h-36 overflow-y-auto">
+            <template x-for="(mo, idx) in ordenes.nuevaOrden.manoDeObra" :key="idx">
+              <div class="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-lg px-4 py-2">
+                <span class="font-semibold text-slate-700" x-text="mo.descripcion"></span>
+                <div class="flex items-center gap-3">
+                  <span class="font-bold text-slate-800" x-text="formatearMoneda(mo.precio, config.datosTaller.moneda, config.datosTaller.formatoMoneda)"></span>
+                  <button type="button" @click="ordenes.removerManoDeObra(idx)" class="text-rose-500 hover:text-rose-700 font-semibold text-xs">Eliminar</button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Bloque 6: Desglose de Repuestos e Insumos -->
+        <div class="border-t border-gray-100 pt-4">
+          <h4 class="font-bold text-slate-800 mb-2 flex items-center gap-1">
+            <i data-lucide="package" class="w-4 h-4 text-emerald-600"></i>
+            Repuestos / Insumos Utilizados
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end mb-3">
+            <div class="sm:col-span-2">
+              <label class="block text-xs text-gray-500 mb-0.5">Artículo / Pieza</label>
+              <input type="text" x-model="ordenes.tempRepuesto.descripcion" placeholder="Ej. Filtro de aceite" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-0.5">Precio Unit. ($)</label>
+              <input type="number" x-model="ordenes.tempRepuesto.precio" placeholder="8500" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            </div>
+            <div class="flex gap-2">
+              <div class="w-20">
+                <label class="block text-xs text-gray-500 mb-0.5">Cant.</label>
+                <input type="number" x-model="ordenes.tempRepuesto.cantidad" placeholder="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none text-center">
+              </div>
+              <button type="button" @click="ordenes.agregarRepuesto()" class="bg-slate-800 hover:bg-slate-700 text-white p-2.5 rounded-lg transition animate-none" title="Agregar Repuesto">
+                <i data-lucide="plus" class="w-5 h-5"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabla de Repuestos agregados -->
+          <div class="space-y-1.5 max-h-36 overflow-y-auto">
+            <template x-for="(rp, idx) in ordenes.nuevaOrden.repuestos" :key="idx">
+              <div class="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-lg px-4 py-2">
+                <span class="font-semibold text-slate-700" x-text="`${rp.descripcion} (x${rp.cantidad})`"></span>
+                <div class="flex items-center gap-3">
+                  <span class="font-bold text-slate-800" x-text="formatearMoneda(rp.precio * rp.cantidad, config.datosTaller.moneda, config.datosTaller.formatoMoneda)"></span>
+                  <button type="button" @click="ordenes.removerRepuesto(idx)" class="text-rose-500 hover:text-rose-700 font-semibold text-xs">Eliminar</button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Bloque 7: Barra de Totales y Liquidación -->
+        <div class="border-t border-gray-200 pt-4 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
+          <div>
+            <p class="text-xs text-gray-500 uppercase font-extrabold tracking-wide">Monto Estimado Total</p>
+            <p class="text-3xl font-black text-slate-800" x-text="formatearMoneda(ordenes.nuevaOrden.total, config.datosTaller.moneda, config.datosTaller.formatoMoneda)"></p>
+          </div>
+          <div class="flex gap-2 w-full sm:w-auto justify-end">
+            <button type="button" @click="modalOrdenOpen = false" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 px-6 rounded-lg transition text-sm">Cerrar</button>
+            <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-6 rounded-lg transition text-sm shadow">Registrar Orden de Trabajo</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- D. MODAL: PLANTILLA WHATSAPP (Creación y Edición) -->
+  <div x-show="modalPlantillaOpen" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4" x-transition>
+    <div class="bg-white rounded-xl shadow-xl max-w-lg w-full overflow-hidden" @click.away="modalPlantillaOpen = false">
+      <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+        <h3 class="font-bold text-lg flex items-center gap-2">
+          <i data-lucide="message-square" class="text-emerald-400"></i>
+          <span x-text="editandoPlantillaId ? 'Editar Plantilla' : 'Nueva Plantilla WhatsApp'"></span>
+        </h3>
+        <button @click="modalPlantillaOpen = false" class="text-gray-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form @submit.prevent="guardarPlantillaForm()" class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Título de la Plantilla *</label>
+          <input type="text" x-model="whatsapp.nuevaPlantilla.titulo" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Ej. Presupuesto Listo">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Texto del Mensaje *</label>
+          <textarea x-model="whatsapp.nuevaPlantilla.texto" rows="6" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-xs" placeholder="Ingresa el texto de envío rápido..."></textarea>
+        </div>
+
+        <div class="text-xs text-gray-500 bg-slate-50 rounded-lg p-3">
+          <p class="font-bold text-slate-700 mb-1">Variables utilizables:</p>
+          <p class="font-mono">{nombre_cliente}, {vehiculo}, {placa}, {estado_orden}, {total_pagar}, {nombre_taller}</p>
+        </div>
+
+        <div class="pt-4 flex justify-end gap-2 border-t border-gray-100">
+          <button type="button" @click="modalPlantillaOpen = false" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg transition text-sm">Cancelar</button>
+          <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition text-sm">Guardar Plantilla</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- E. MODAL: ASISTENTE DE MENSAJERÍA RÁPIDA DE WHATSAPP -->
+  <div x-show="modalMensajeriaOpen" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 overflow-y-auto" x-transition>
+    <div class="bg-white rounded-xl shadow-xl max-w-xl w-full overflow-hidden" @click.away="modalMensajeriaOpen = false">
+      <div class="bg-emerald-600 text-white px-6 py-4 flex items-center justify-between">
+        <h3 class="font-bold text-lg flex items-center gap-2">
+          <i data-lucide="message-square" class="text-white"></i>
+          <span>Asistente de Envío de WhatsApp</span>
+        </h3>
+        <button @click="modalMensajeriaOpen = false" class="text-white/80 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-6 space-y-4 text-sm">
+        <div class="bg-emerald-50 border border-emerald-100 rounded-lg p-4">
+          <p class="font-bold text-emerald-800">Cliente Destinatario:</p>
+          <p class="text-emerald-700 font-semibold" x-text="ordenMensajeriaActiva?.cliente?.nombre"></p>
+          <p class="text-xs text-emerald-600" x-text="'Teléfono: ' + (ordenMensajeriaActiva?.cliente?.telefono || 'No registra')"></p>
+        </div>
+
+        <!-- Selección de plantilla preestablecida -->
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Seleccionar Plantilla de Envío</label>
+          <select x-model="plantillaSeleccionadaId" @change="procesarVistaMensajeDePlantilla()" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+            <option value="">-- Personalizar Mensaje Manualmente --</option>
+            <template x-for="p in listaPlantillas" :key="p.id">
+              <option :value="p.id" x-text="p.titulo"></option>
+            </template>
+          </select>
+        </div>
+
+        <!-- Vista previa y edición del mensaje final -->
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Cuerpo del Mensaje (Sustituido Dinámicamente)</label>
+          <textarea x-model="mensajeSustituido" rows="6" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-xs" placeholder="Ingresa tu mensaje para enviar directo a WhatsApp..."></textarea>
+        </div>
+
+        <div class="pt-4 flex justify-end gap-2 border-t border-gray-100">
+          <button type="button" @click="modalMensajeriaOpen = false" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 px-6 rounded-lg transition">Cancelar</button>
+          <button @click="abrirConversacionDeWhatsApp()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-6 rounded-lg transition flex items-center justify-center gap-2 shadow">
+            <i data-lucide="share" class="w-4 h-4"></i>
+            <span>Enviar Mensaje Directo</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ==================== CÓDIGO CORE ALPINE.JS DE CONTROLADORES SPA ==================== -->
+  <script>
+    function crmApp() {
+      return {
+        // Módulos importados
+        onboarding: OnboardingModule,
+        dashboard: DashboardModule,
+        clientes: ClientesVehiculosModule,
+        ordenes: OrdenesModule,
+        whatsapp: WhatsAppModule,
+        config: ConfiguracionModule,
+
+        // Estado general de navegación
+        vistaActiva: "dashboard",
+        mostrarOnboarding: true,
+
+        // Estados globales de colecciones cargadas
+        listaClientes: [],
+        listaVehiculos: [],
+        listaOrdenes: [],
+        listaPlantillas: [],
+
+        // Variables de filtro reactivas en el DOM
+        listaVehiculosFiltrados: [],
+
+        // Modales de control de estados
+        modalClienteOpen: false,
+        editandoClienteId: null,
+
+        modalVehiculoOpen: false,
+        editandoVehiculoId: null,
+
+        modalOrdenOpen: false,
+        editandoOrdenId: null,
+
+        modalPlantillaOpen: false,
+        editandoPlantillaId: null,
+
+        modalMensajeriaOpen: false,
+        ordenMensajeriaActiva: null,
+        plantillaSeleccionadaId: "",
+        mensajeSustituido: "",
+
+        // Inicializador principal de la aplicación SPA
+        async initApp() {
+          // Detectar si el taller ya se encuentra instalado/calibrado
+          if (this.onboarding.estaInstalado()) {
+            this.mostrarOnboarding = false;
+            await this.entrarAlSistema();
+          } else {
+            this.mostrarOnboarding = true;
+          }
+
+          // Renderizar los iconos de Lucide
+          setTimeout(() => { lucide.createIcons(); }, 300);
+        },
+
+        // Actualizar valores del país por defecto en onboarding
+        actualizarMonedaDefecto() {
+          const configMonedas = {
+            "Chile": { moneda: "$", formato: "es-CL" },
+            "Argentina": { moneda: "$", formato: "es-AR" },
+            "México": { moneda: "$", formato: "es-MX" },
+            "Colombia": { moneda: "$", formato: "CO$" },
+            "España": { moneda: "€", formato: "es-ES" },
+            "Perú": { moneda: "S/", formato: "es-PE" },
+            "Uruguay": { moneda: "$U", formato: "es-UY" },
+            "Otro": { moneda: "$", formato: "es-CL" }
+          };
+
+          const sel = configMonedas[this.onboarding.nuevoTaller.pais];
+          if (sel) {
+            this.onboarding.nuevoTaller.moneda = sel.moneda;
+            this.onboarding.nuevoTaller.formatoMoneda = sel.formato;
+          }
+        },
+
+        // Entrar a la interfaz de administración
+        async entrarAlSistema() {
+          this.mostrarOnboarding = false;
+          await this.config.cargarConfiguracion();
+          await this.cargarColecciones();
+          await this.recargarDashboard();
+          this.navegar('dashboard');
+        },
+
+        // Recargar datos desde IndexedDB para actualizar UI
+        async cargarColecciones() {
+          this.listaClientes = await db.clientes.toArray();
+          this.listaVehiculos = await db.vehiculos.toArray();
+          this.listaOrdenes = await this.ordenes.obtenerOrdenesCompletas();
+          this.listaPlantillas = await this.whatsapp.obtenerPlantillas();
+        },
+
+        // Recargar KPIs y Gráfico
+        async recargarDashboard() {
+          await this.dashboard.recalcularMetricas();
+          this.dashboard.renderizarGrafico("dashboardChart");
+        },
+
+        // Cambiar entre pestañas de navegación (SPA Router)
+        async navegar(vista) {
+          reproducirSonido('click');
+          this.vistaActiva = vista;
+          await this.cargarColecciones();
+
+          if (vista === 'dashboard') {
+            await this.recargarDashboard();
+          }
+
+          // Reiniciar iconos de Lucide cargados dinámicamente
+          setTimeout(() => { lucide.createIcons(); }, 100);
+        },
+
+        // Helper para redirigir tras terminar el Onboarding
+        finalizarOnboardingCompleto() {
+          this.entrarAlSistema();
+        },
+
+
+        // --- MANEJADORES: CLIENTES ---
+        abrirModalCliente(clienteObj = null) {
+          reproducirSonido('click');
+          this.clientes.limpiarFormularioCliente();
+          if (clienteObj) {
+            this.editandoClienteId = clienteObj.id;
+            this.clientes.nuevoCliente = {
+              nombre: clienteObj.nombre,
+              telefono: clienteObj.telefono,
+              email: clienteObj.email,
+              documento: clienteObj.documento
+            };
+          } else {
+            this.editandoClienteId = null;
+          }
+          this.modalClienteOpen = true;
+          setTimeout(() => { lucide.createIcons(); }, 50);
+        },
+
+        async guardarClienteForm() {
+          const exito = await this.clientes.guardarCliente(this.editandoClienteId);
+          if (exito) {
+            this.modalClienteOpen = false;
+            await this.cargarColecciones();
+            if (this.vistaActiva === 'dashboard') {
+              await this.recargarDashboard();
+            }
+          }
+        },
+
+        async eliminarCliente(id) {
+          const exito = await this.clientes.eliminarCliente(id);
+          if (exito) {
+            await this.cargarColecciones();
+            if (this.vistaActiva === 'dashboard') {
+              await this.recargarDashboard();
+            }
+          }
+        },
+
+        clientesFiltrados() {
+          if (!this.clientes.busquedaClientes.trim()) {
+            return this.listaClientes.map(c => {
+              return {
+                ...c,
+                vehiculos: this.listaVehiculos.filter(v => v.clienteId === c.id)
+              };
+            });
+          }
+
+          const q = this.clientes.busquedaClientes.toLowerCase().trim();
+          return this.listaClientes.filter(c => {
+            return c.nombre.toLowerCase().includes(q) ||
+                   c.telefono.toLowerCase().includes(q) ||
+                   (c.email && c.email.toLowerCase().includes(q)) ||
+                   (c.documento && c.documento.toLowerCase().includes(q));
+          }).map(c => {
+            return {
+              ...c,
+              vehiculos: this.listaVehiculos.filter(v => v.clienteId === c.id)
+            };
+          });
+        },
+
+
+        // --- MANEJADORES: VEHÍCULOS ---
+        abrirModalVehiculo(vehiculoObj = null) {
+          reproducirSonido('click');
+          this.clientes.limpiarFormularioVehiculo();
+          if (vehiculoObj) {
+            this.editandoVehiculoId = vehiculoObj.id;
+            this.clientes.nuevoVehiculo = {
+              clienteId: vehiculoObj.clienteId,
+              marca: vehiculoObj.marca,
+              modelo: vehiculoObj.modelo,
+              anio: vehiculoObj.anio,
+              placa: vehiculoObj.placa,
+              color: vehiculoObj.color,
+              vin: vehiculoObj.vin,
+              kilometraje: vehiculoObj.kilometraje
+            };
+          } else {
+            this.editandoVehiculoId = null;
+          }
+          this.modalVehiculoOpen = true;
+          setTimeout(() => { lucide.createIcons(); }, 50);
+        },
+
+        async guardarVehiculoForm() {
+          const exito = await this.clientes.guardarVehiculo(this.editandoVehiculoId);
+          if (exito) {
+            this.modalVehiculoOpen = false;
+            await this.cargarColecciones();
+          }
+        },
+
+        async eliminarVehiculo(id) {
+          const exito = await this.clientes.eliminarVehiculo(id);
+          if (exito) {
+            await this.cargarColecciones();
+            if (this.vistaActiva === 'dashboard') {
+              await this.recargarDashboard();
+            }
+          }
+        },
+
+
+        // --- MANEJADORES: ÓRDENES ---
+        async abrirModalOrden(ordenObj = null) {
+          reproducirSonido('click');
+          await this.ordenes.limpiarFormularioOrden();
+          this.listaVehiculosFiltrados = [];
+
+          if (ordenObj) {
+            this.editandoOrdenId = ordenObj.id;
+            this.ordenes.nuevaOrden = {
+              clienteId: ordenObj.clienteId,
+              vehiculoId: ordenObj.vehiculoId,
+              numeroOrden: ordenObj.numeroOrden,
+              fechaIngreso: ordenObj.fechaIngreso,
+              fechaEntrega: ordenObj.fechaEntrega,
+              diagnostico: ordenObj.diagnostico,
+              nivelCombustible: ordenObj.nivelCombustible || "1/4",
+              estadoVisual: ordenObj.estadoVisual || "",
+              estado: ordenObj.estado,
+              manoDeObra: JSON.parse(JSON.stringify(ordenObj.manoDeObra || [])),
+              repuestos: JSON.parse(JSON.stringify(ordenObj.repuestos || [])),
+              total: ordenObj.total || 0
+            };
+            this.filtrarVehiculosDeClienteSeleccionado();
+          } else {
+            this.editandoOrdenId = null;
+          }
+          this.modalOrdenOpen = true;
+          setTimeout(() => { lucide.createIcons(); }, 50);
+        },
+
+        filtrarVehiculosDeClienteSeleccionado() {
+          const cid = Number(this.ordenes.nuevaOrden.clienteId);
+          if (!cid) {
+            this.listaVehiculosFiltrados = [];
+            return;
+          }
+          this.listaVehiculosFiltrados = this.listaVehiculos.filter(v => v.clienteId === cid);
+        },
+
+        async guardarOrdenForm() {
+          const exito = await this.ordenes.guardarOrden(this.editandoOrdenId);
+          if (exito) {
+            this.modalOrdenOpen = false;
+            await this.cargarColecciones();
+            if (this.vistaActiva === 'dashboard') {
+              await this.recargarDashboard();
+            }
+          }
+        },
+
+        async eliminarOrden(id) {
+          const exito = await this.ordenes.eliminarOrden(id);
+          if (exito) {
+            await this.cargarColecciones();
+            if (this.vistaActiva === 'dashboard') {
+              await this.recargarDashboard();
+            }
+          }
+        },
+
+        ordenesFiltradas() {
+          let lista = this.listaOrdenes;
+
+          // Filtro de estado
+          if (this.ordenes.filtroEstado !== 'Todas') {
+            lista = lista.filter(o => o.estado === this.ordenes.filtroEstado);
+          }
+
+          // Filtro por texto
+          if (this.ordenes.busquedaOrden.trim()) {
+            const q = this.ordenes.busquedaOrden.toLowerCase().trim();
+            lista = lista.filter(o => {
+              const otMatch = o.numeroOrden.toLowerCase().includes(q);
+              const cliMatch = o.cliente && o.cliente.nombre.toLowerCase().includes(q);
+              const placaMatch = o.vehiculo && o.vehiculo.placa.toLowerCase().includes(q);
+              const modMatch = o.vehiculo && `${o.vehiculo.marca} ${o.vehiculo.modelo}`.toLowerCase().includes(q);
+              return otMatch || cliMatch || placaMatch || modMatch;
+            });
+          }
+
+          return lista;
+        },
+
+
+        // --- MANEJADORES: PLANTILLAS WHATSAPP ---
+        abrirModalPlantilla(plantillaObj = null) {
+          reproducirSonido('click');
+          this.whatsapp.limpiarFormularioPlantilla();
+          if (plantillaObj) {
+            this.editandoPlantillaId = plantillaObj.id;
+            this.whatsapp.nuevaPlantilla = {
+              titulo: plantillaObj.titulo,
+              texto: plantillaObj.texto
+            };
+          } else {
+            this.editandoPlantillaId = null;
+          }
+          this.modalPlantillaOpen = true;
+          setTimeout(() => { lucide.createIcons(); }, 50);
+        },
+
+        async guardarPlantillaForm() {
+          const exito = await this.whatsapp.guardarPlantilla(this.editandoPlantillaId);
+          if (exito) {
+            this.modalPlantillaOpen = false;
+            await this.cargarColecciones();
+          }
+        },
+
+        async eliminarPlantilla(id) {
+          const exito = await this.whatsapp.eliminarPlantilla(id);
+          if (exito) {
+            await this.cargarColecciones();
+          }
+        },
+
+
+        // --- ASISTENTE DE ENVÍO DIRECTO DE WHATSAPP ---
+        async abrirMensajeriaOrden(ordenCompleta) {
+          reproducirSonido('click');
+          this.ordenMensajeriaActiva = ordenCompleta;
+          this.plantillaSeleccionadaId = "";
+          this.mensajeSustituido = "";
+          this.modalMensajeriaOpen = true;
+
+          // Por defecto cargar la primera plantilla si existe
+          if (this.listaPlantillas.length > 0) {
+            this.plantillaSeleccionadaId = this.listaPlantillas[0].id;
+            await this.procesarVistaMensajeDePlantilla();
+          }
+          setTimeout(() => { lucide.createIcons(); }, 50);
+        },
+
+        async procesarVistaMensajeDePlantilla() {
+          if (!this.plantillaSeleccionadaId) {
+            this.mensajeSustituido = "";
+            return;
+          }
+          const plantillaObj = this.listaPlantillas.find(p => p.id === Number(this.plantillaSeleccionadaId));
+          if (plantillaObj) {
+            this.mensajeSustituido = await this.whatsapp.formatearMensaje(
+              plantillaObj.texto,
+              this.ordenMensajeriaActiva,
+              this.config.datosTaller
+            );
+          }
+        },
+
+        async abrirConversacionDeWhatsApp() {
+          if (!this.ordenMensajeriaActiva || !this.ordenMensajeriaActiva.cliente) {
+            notificarError("No se ha seleccionado una orden o un cliente válido.");
+            return;
+          }
+          const telefono = this.ordenMensajeriaActiva.cliente.telefono;
+          const url = await this.whatsapp.generarEnlaceWhatsApp(telefono, this.mensajeSustituido);
+
+          reproducirSonido('success');
+          window.open(url, '_blank');
+          this.modalMensajeriaOpen = false;
+        },
+
+
+        // --- PROCESADOR DE RESPALDOS JSON ---
+        procesarImportarBackup(event) {
+          const archivo = event.target.files[0];
+          if (!archivo) return;
+
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            const contenido = e.target.result;
+            const exito = await importarBackup(contenido);
+            if (exito) {
+              await this.entrarAlSistema();
+            }
+          };
+          reader.readAsText(archivo);
+        }
+      };
+    }
+  </script>
+</body>
+</html>
